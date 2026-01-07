@@ -44,7 +44,7 @@ func generateRandomNumber() int {
 	unixTime := time.Now().Unix()
 	newSource := rand.NewSource(unixTime)
 	newRand := rand.New(newSource)
-	randomNumber := newRand.Intn(100) + 1
+	randomNumber := newRand.Intn(2) + 1
 	return randomNumber
 }
 
@@ -62,7 +62,7 @@ func createTable(rows [][]string) string {
 				return oddRowStyle
 			}
 		}).
-		Headers("Attempt", "Your Guess", "Hint/Result").
+		Headers("Attempt", "Your Guess", "Result").
 		Rows(rows...)
 
 	return t.String()
@@ -78,6 +78,8 @@ type model struct {
 	attempts  int
 	feedback  string
 	history   [][]string
+	gameOver  bool
+	choice    int
 	err       error
 }
 
@@ -94,6 +96,8 @@ func initialModel() model {
 		attempts:  0,
 		feedback:  "",
 		history:   [][]string{},
+		gameOver:  false,
+		choice:    0,
 		err:       nil,
 	}
 }
@@ -107,6 +111,19 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 
 	switch msg := msg.(type) {
 	case tea.KeyMsg:
+		if m.gameOver {
+			switch msg.Type {
+			case tea.KeyLeft, tea.KeyRight:
+				m.choice = 1 - m.choice
+				return m, nil
+			case tea.KeyEnter:
+				if m.choice == 0 {
+					return initialModel(), nil
+				}
+				return m, tea.Quit
+			}
+			return m, nil
+		}
 		switch msg.Type {
 		case tea.KeyEnter:
 			userInput, err := strconv.Atoi(m.textInput.Value())
@@ -125,7 +142,9 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			} else {
 				m.feedback = "Correct!"
 				m.history = append(m.history, []string{strconv.Itoa(m.attempts), strconv.Itoa(userInput), "✅"})
-				return m, tea.Quit
+				m.gameOver = true
+				m.choice = 0
+				return m, nil
 			}
 
 		case tea.KeyCtrlC, tea.KeyEsc:
@@ -141,7 +160,7 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	return m, cmd
 }
 
-func (m model) View() string {
+func (m model) gameView() string {
 	styledFeedback := m.feedback
 
 	switch m.feedback {
@@ -154,10 +173,53 @@ func (m model) View() string {
 	}
 
 	return fmt.Sprintf(
-		"Welcome to the Guessing Game!\n\nGuess the number between 1 and 100\n\n%s\n\n%s\nAttempts so far: %d\n\n%s\n\n(enter to submit, esc to quit)\n",
+		"Welcome to the Guessing Game! 🎲 \n\nGuess the number between 1 and 100\n\n%s\n\n%s\n\nAttempts so far: %d\n\n%s\n\n(Press Enter to submit or Esc to quit)\n",
 		m.textInput.View(),
 		styledFeedback,
 		m.attempts,
 		createTable(m.history),
 	)
+}
+
+func replayBox(choice int) string {
+	box := lipgloss.NewStyle().
+		Border(lipgloss.RoundedBorder()).
+		Padding(1, 3).
+		BorderForeground(purple)
+
+	btn := func(label string, selected bool) string {
+		s := lipgloss.NewStyle().
+			Padding(0, 3)
+		if selected {
+			s = s.Bold(true).Foreground(purple)
+		}
+		return s.Render(label)
+	}
+
+	yes := btn("Yes", choice == 0)
+	no := btn("No", choice == 1)
+
+	content := "Play again?" + lipgloss.JoinHorizontal(lipgloss.Center, yes, " ", no) + "\n\n(Use ← → to choose and Enter to confirm)"
+
+	return box.Render(content)
+}
+
+func (m model) View() string {
+	base := m.gameView()
+
+	if m.gameOver {
+		box := replayBox(m.choice)
+
+		return base + lipgloss.Place(
+			80,
+			24,
+			lipgloss.Left,
+			lipgloss.Center,
+			box,
+			lipgloss.WithWhitespaceChars(" "),
+			lipgloss.WithWhitespaceForeground(lipgloss.Color("236")),
+		) + "\n"
+	}
+
+	return base
 }
