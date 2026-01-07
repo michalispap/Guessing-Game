@@ -13,9 +13,10 @@ import (
 )
 
 var (
-	higherStyle  = lipgloss.NewStyle().Foreground(lipgloss.Color("10"))
-	lowerStyle   = lipgloss.NewStyle().Foreground(lipgloss.Color("9"))
-	correctStyle = lipgloss.NewStyle().Foreground(lipgloss.Color("12")).Bold(true)
+	higherStyle = lipgloss.NewStyle().Foreground(lipgloss.Color("12"))
+	lowerStyle  = lipgloss.NewStyle().Foreground(lipgloss.Color("208"))
+	wonStyle    = lipgloss.NewStyle().Foreground(lipgloss.Color("10")).Bold(true)
+	lostStyle   = lipgloss.NewStyle().Foreground(lipgloss.Color("9")).Bold(true)
 )
 
 var (
@@ -28,6 +29,8 @@ var (
 	oddRowStyle  = cellStyle.Foreground(gray)
 	evenRowStyle = cellStyle.Foreground(lightGray)
 )
+
+const maxAttempts int = 10
 
 func main() {
 	p := tea.NewProgram(
@@ -44,7 +47,7 @@ func generateRandomNumber() int {
 	unixTime := time.Now().Unix()
 	newSource := rand.NewSource(unixTime)
 	newRand := rand.New(newSource)
-	randomNumber := newRand.Intn(2) + 1
+	randomNumber := newRand.Intn(100) + 1
 	return randomNumber
 }
 
@@ -73,14 +76,14 @@ type (
 )
 
 type model struct {
-	textInput textinput.Model
-	secret    int
-	attempts  int
-	feedback  string
-	history   [][]string
-	gameOver  bool
-	choice    int
-	err       error
+	textInput    textinput.Model
+	secret       int
+	attemptsLeft int
+	feedback     string
+	history      [][]string
+	gameOver     bool
+	choice       int
+	err          error
 }
 
 func initialModel() model {
@@ -91,14 +94,14 @@ func initialModel() model {
 	ti.Width = 3
 
 	return model{
-		textInput: ti,
-		secret:    generateRandomNumber(),
-		attempts:  0,
-		feedback:  "",
-		history:   [][]string{},
-		gameOver:  false,
-		choice:    0,
-		err:       nil,
+		textInput:    ti,
+		secret:       generateRandomNumber(),
+		attemptsLeft: maxAttempts,
+		feedback:     "",
+		history:      [][]string{},
+		gameOver:     false,
+		choice:       0,
+		err:          nil,
 	}
 }
 
@@ -132,16 +135,26 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 				m.feedback = "Enter a number, dude!"
 				return m, nil
 			}
-			m.attempts++
-			if userInput < m.secret {
-				m.feedback = "Higher"
-				m.history = append(m.history, []string{strconv.Itoa(m.attempts), strconv.Itoa(userInput), "⬆️"})
-			} else if userInput > m.secret {
-				m.feedback = "Lower"
-				m.history = append(m.history, []string{strconv.Itoa(m.attempts), strconv.Itoa(userInput), "⬇️"})
+			m.attemptsLeft--
+			attemptsSoFar := maxAttempts - m.attemptsLeft
+
+			if m.attemptsLeft != 0 {
+				if userInput < m.secret {
+					m.feedback = "Higher"
+					m.history = append(m.history, []string{strconv.Itoa(attemptsSoFar), strconv.Itoa(userInput), "⬆️"})
+				} else if userInput > m.secret {
+					m.feedback = "Lower"
+					m.history = append(m.history, []string{strconv.Itoa(attemptsSoFar), strconv.Itoa(userInput), "⬇️"})
+				} else {
+					m.feedback = "You won!"
+					m.history = append(m.history, []string{strconv.Itoa(attemptsSoFar), strconv.Itoa(userInput), "✅"})
+					m.gameOver = true
+					m.choice = 0
+					return m, nil
+				}
 			} else {
-				m.feedback = "Correct!"
-				m.history = append(m.history, []string{strconv.Itoa(m.attempts), strconv.Itoa(userInput), "✅"})
+				m.feedback = "You lost!"
+				m.history = append(m.history, []string{strconv.Itoa(attemptsSoFar), strconv.Itoa(userInput), "❌"})
 				m.gameOver = true
 				m.choice = 0
 				return m, nil
@@ -168,15 +181,18 @@ func (m model) gameView() string {
 		styledFeedback = higherStyle.Render(m.feedback)
 	case "Lower":
 		styledFeedback = lowerStyle.Render(m.feedback)
-	case "Correct!":
-		styledFeedback = correctStyle.Render(m.feedback)
+	case "You won!":
+		styledFeedback = wonStyle.Render(m.feedback)
+	case "You lost!":
+		styledFeedback = lostStyle.Render(m.feedback)
 	}
 
 	return fmt.Sprintf(
-		"Welcome to the Guessing Game! 🎲 \n\nGuess the number between 1 and 100\n\n%s\n\n%s\n\nAttempts so far: %d\n\n%s\n\n(Press Enter to submit or Esc to quit)\n",
+		"Welcome to the Guessing Game! 🎲 \n\nGuess the number between 1 and 100. You have %d attempts in total.\n\n%s\n\n%s\n\nAttempts left: %d\n\n%s\n\n(Press Enter to submit or Esc to quit)\n",
+		maxAttempts,
 		m.textInput.View(),
 		styledFeedback,
-		m.attempts,
+		m.attemptsLeft,
 		createTable(m.history),
 	)
 }
