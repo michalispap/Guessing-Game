@@ -87,8 +87,8 @@ func initialModel() model {
 	ti := textinput.New()
 	ti.Placeholder = ""
 	ti.Focus()
-	ti.CharLimit = 156
-	ti.Width = 20
+	ti.CharLimit = 3
+	ti.Width = 3
 
 	return model{
 		textInput: ti,
@@ -209,16 +209,7 @@ func (m model) View() string {
 
 	if m.gameOver {
 		box := replayBox(m.choice)
-
-		return base + lipgloss.Place(
-			80,
-			24,
-			lipgloss.Left,
-			lipgloss.Center,
-			box,
-			lipgloss.WithWhitespaceChars(" "),
-			lipgloss.WithWhitespaceForeground(lipgloss.Color("236")),
-		) + "\n"
+		return base + "\n\n" + box + "\n"
 	}
 
 	return base
