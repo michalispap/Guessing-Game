@@ -95,7 +95,7 @@ func initialModel() model {
 
 	return model{
 		textInput:    ti,
-		secret:       50, // generateRandomNumber(),
+		secret:       generateRandomNumber(),
 		attemptsLeft: maxAttempts,
 		feedback:     "",
 		history:      [][]string{},
