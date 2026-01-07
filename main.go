@@ -193,7 +193,8 @@ func (m model) gameView() string {
 	case "You won!":
 		styledFeedback = wonStyle.Render(m.feedback) + "😊"
 	case "You lost!":
-		styledFeedback = lostStyle.Render(m.feedback) + "😢"
+		revealedSecret := lipgloss.NewStyle().Foreground(purple).Bold(true).Render(strconv.Itoa(m.secret))
+		styledFeedback = lostStyle.Render(m.feedback) + "😢" + "\nIt was " + revealedSecret + "!"
 	}
 
 	return fmt.Sprintf(
