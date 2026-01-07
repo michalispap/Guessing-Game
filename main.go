@@ -138,7 +138,7 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			m.attemptsLeft--
 			attemptsSoFar := maxAttempts - m.attemptsLeft
 
-			if m.attemptsLeft != 0 {
+			if m.attemptsLeft > 1 {
 				if userInput < m.secret {
 					m.feedback = "Higher"
 					m.history = append(m.history, []string{strconv.Itoa(attemptsSoFar), strconv.Itoa(userInput), "⬆️"})
