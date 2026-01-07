@@ -95,7 +95,7 @@ func initialModel() model {
 
 	return model{
 		textInput:    ti,
-		secret:       generateRandomNumber(),
+		secret:       50, // generateRandomNumber(),
 		attemptsLeft: maxAttempts,
 		feedback:     "",
 		history:      [][]string{},
@@ -135,10 +135,25 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 				m.feedback = "Enter a number, dude!"
 				return m, nil
 			}
+
 			m.attemptsLeft--
 			attemptsSoFar := maxAttempts - m.attemptsLeft
 
-			if m.attemptsLeft > 1 {
+			if m.attemptsLeft == 0 {
+				if userInput != m.secret {
+					m.feedback = "You lost!"
+					m.history = append(m.history, []string{strconv.Itoa(attemptsSoFar), strconv.Itoa(userInput), "❌"})
+					m.gameOver = true
+					m.choice = 0
+					return m, nil
+				} else {
+					m.feedback = "You won!"
+					m.history = append(m.history, []string{strconv.Itoa(attemptsSoFar), strconv.Itoa(userInput), "✅"})
+					m.gameOver = true
+					m.choice = 0
+					return m, nil
+				}
+			} else {
 				if userInput < m.secret {
 					m.feedback = "Higher"
 					m.history = append(m.history, []string{strconv.Itoa(attemptsSoFar), strconv.Itoa(userInput), "⬆️"})
@@ -152,12 +167,6 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 					m.choice = 0
 					return m, nil
 				}
-			} else {
-				m.feedback = "You lost!"
-				m.history = append(m.history, []string{strconv.Itoa(attemptsSoFar), strconv.Itoa(userInput), "❌"})
-				m.gameOver = true
-				m.choice = 0
-				return m, nil
 			}
 
 		case tea.KeyCtrlC, tea.KeyEsc:
@@ -182,9 +191,9 @@ func (m model) gameView() string {
 	case "Lower":
 		styledFeedback = lowerStyle.Render(m.feedback)
 	case "You won!":
-		styledFeedback = wonStyle.Render(m.feedback)
+		styledFeedback = wonStyle.Render(m.feedback) + "😊"
 	case "You lost!":
-		styledFeedback = lostStyle.Render(m.feedback)
+		styledFeedback = lostStyle.Render(m.feedback) + "😢"
 	}
 
 	return fmt.Sprintf(
