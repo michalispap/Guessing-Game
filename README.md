@@ -30,6 +30,16 @@ go mod download
 go run main.go
 ```
 
+#### Docker (Optional)
+
+In case you prefer to play the game using Docker, run the below:
+
+```
+docker pull michalispap99/guessing-game:latest # Pull the image from Docker Hub
+docker run -it --rm guessing-game:latest  # Run the game
+```
+
+
 ## Libraries Used
 
 This project leverages the [Charm](https://charm.sh/) ecosystem:
